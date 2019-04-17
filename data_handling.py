@@ -89,10 +89,14 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
         # print()
 
     #Now converting the dataset into numpy array
-    labels=np.array(labels,dtype=np.uint8)
-    images=np.array(images)
-    print("Batch Created: shape:{} img_dtype:{}".format(images.shape,\
+    labels=(np.array(labels,dtype=np.uint8).T).reshape(1,-1)
+    images=np.array(images).T
+    print("Batch Created:\nimg_shape:{} img_dtype:{}".format(\
+                                                        images.shape,\
                                                         images.dtype))
+    print("labels_shape:{} labels_dtype:{}".format(\
+                                                    labels.shape,\
+                                                    labels.dtype))
 
     return images,labels
 
