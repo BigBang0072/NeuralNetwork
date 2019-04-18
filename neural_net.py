@@ -220,7 +220,7 @@ class FF_NeuralNetwork():
             #Now calculating the gradient
             self.backpropagate_through_net(train_labels)
             #Testing the gradient numerically first
-            # self.__gradient_check(images,labels)
+            self.__gradient_check(train_images,train_labels)
             #Now we will apply the parameter update
             self.update_parameter()
 
