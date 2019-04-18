@@ -68,7 +68,7 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
     images=[]
 
     #Iterating over the examples
-    print("Loading the batch to the memory")
+    # print("Loading the batch to the memory")
     for exnum in range(batch_exnames.shape[0]):
         #Getting the label
         exname=batch_exnames[exnum]
@@ -83,7 +83,7 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
         img=img.reshape(-1)
         images.append(img)
 
-        print(exname,"\tshape:{} \tdtype:{}".format(img.shape,img.dtype))
+        # print(exname,"\tshape:{} \tdtype:{}".format(img.shape,img.dtype))
         # plt.imshow(img,cmap="gray")
         # plt.show()
         # print()
@@ -91,12 +91,12 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
     #Now converting the dataset into numpy array
     labels=(np.array(labels,dtype=np.uint8).T).reshape(1,-1)
     images=np.array(images).T
-    print("Batch Created:\nimg_shape:{} img_dtype:{}".format(\
-                                                        images.shape,\
-                                                        images.dtype))
-    print("labels_shape:{} labels_dtype:{}".format(\
-                                                    labels.shape,\
-                                                    labels.dtype))
+    # print("Batch Created:\nimg_shape:{} img_dtype:{}".format(\
+    #                                                     images.shape,\
+    #                                                     images.dtype))
+    # print("labels_shape:{} labels_dtype:{}".format(\
+    #                                                 labels.shape,\
+    #                                                 labels.dtype))
 
     return images,labels
 

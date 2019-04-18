@@ -15,11 +15,11 @@ class FF_NeuralNetwork():
 
     ######################## MEMEBER FUNCTION #######################
     #Initializer fucntion
-    def __init__(input_dim,layer_config,h_activation,\
+    def __init__(self,input_dim,layer_config,h_activation,\
                 o_activation,loss_type,\
                 param_init_type,param_dtype,\
                 lr,epochs,\
-                dataset_path,split_ratio,batch_size):
+                dataset_path,split_ratio,batch_size=1000):
         '''
         This function will initialize the Network with the appropriate
         hyperparameters and model
@@ -55,20 +55,24 @@ class FF_NeuralNetwork():
         layer_params={}
 
         #Now creating varialbe for each layer
+        print("Initializing the variable")
         in_dimension=self.input_dim
         for layer in range(self.nlayers):
             #Setting the shape of the variable
-            w_shape=[layer_config[layer],in_dimension]
-            b_shape=[layer_config[layer]]
-
+            w_shape=[self.layer_config[layer],in_dimension]
+            b_shape=[self.layer_config[layer]]
+            print("Var-Init: w-shape:{} \tb-shape:{}".format(w_shape,\
+                                                            b_shape))
             #Now initializing the variable
-            if(self.init_type=="glorot"):
-                W=np.random.normal(shape=w_shape,dtype=self.param_dtype)\
-                            /(np.sqrt(in_dimension))
+            if(self.param_init_type=="glorot"):
+                W=np.random.randn(self.layer_config[layer],in_dimension)\
+                            /(np.sqrt(in_dimension))\
+                            .astype(self.param_dtype)
                 #We could keep the bias term as zeros
-                b=np.random.normal(shape=b_shape,dtype=self.param_dtype)\
-                            /(np.sqrt(in_dimension))
-            elif(self.init_type=="zeros"):
+                b=np.random.randn(self.layer_config[layer])\
+                            /(np.sqrt(in_dimension))\
+                            .astype(self.param_dtype)
+            elif(self.param_init_type=="zeros"):
                 W=np.zeros(shape=w_shape,dtype=self.param_dtype)
                 b=np.zeros(shape=b_shape,dtype=self.param_dtype)
 
@@ -77,10 +81,11 @@ class FF_NeuralNetwork():
             layer_params["b"+str(layer)]=b
 
             #Now updating the in-dimension
-            in_dimension=layer_config[layer]
+            in_dimension=self.layer_config[layer]
 
         #Now assigning these parameters to the class
         self.layer_params=layer_params
+        print("Parameter Initialization Done!\n")
 
     #Function to run one-step of feed-forward through the network
     def feedforward_though_net(self,batch_input):
@@ -92,6 +97,7 @@ class FF_NeuralNetwork():
         actv_cache={}
 
         #Caching the input to the network
+        #print("\nFeed-Forwarding through network")
         actv_cache["A0"]=batch_input
         #Initializing the input the the neural network first layer
         A = batch_input
@@ -101,7 +107,7 @@ class FF_NeuralNetwork():
             b = self.layer_params["b"+str(layer)]
 
             #Now calculating the activation
-            Z=np.matmul(W,A)+b
+            Z=(np.matmul(W,A).T+b).T
             #Passing the activation through the rectifier
             if(layer == self.nlayers-1):
                 assert Z.shape[0]==1,"Binary Classification Bro!!"
@@ -112,9 +118,11 @@ class FF_NeuralNetwork():
 
             #Now caching the results for later use
             actv_cache["A"+str(layer+1)]=A
+            #print("Shape of layer:{} is:{}".format(layer+1,A.shape))
 
         #Now assining the cache to the object
         self.actv_cache=actv_cache
+        #print("Feed-Forward Completed\n")
 
     #Function to apply the activation to the input tensor
     def apply_activation(self,Z,activation_name):
@@ -158,7 +166,7 @@ class FF_NeuralNetwork():
             #Stage 2: Backpropgating the gradient through this layer
             W = self.layer_params["W"+str(layer)]
             dA = np.matmul(W.T,dA) * \
-                            self.backprop_activation(A_layer)
+                            self.backprop_activation(A_layer,"relu")
 
         #Now assigning this gradient cache to this object
         self.grad_cache=grad_cache
@@ -171,7 +179,7 @@ class FF_NeuralNetwork():
         '''
         if(activation_name=="sigmoid"):
             return A*(1-A)
-        else if(activation_name=="relu"):
+        elif(activation_name=="relu"):
             return (A>0)*1.0
         else:
             raise AssertionError("unsupported activation type!!")
@@ -187,8 +195,13 @@ class FF_NeuralNetwork():
                                                     self.dataset_path,\
                                                     self.split_ratio,\
                                                     self.batch_size)
+        print("# Training Set minbatch:",len(train_exshard))
+        print("# Validation Set minibatch:",len(valid_exshard))
+        #Initializing the parameter
+        self.initialize_parameters()
+
         #Starting the training loop
-        for epoch in self.epochs:
+        for epoch in range(self.epochs):
             #Now iterating over all the batches of example
             for batch,ex_shard in enumerate(train_exshard):
                 #Loading the mini-batch into the memory
@@ -210,7 +223,7 @@ class FF_NeuralNetwork():
             print("Training Epoch-{} completed".format(epoch))
 
             #Starting the validation run
-            if(epoch%valid_freq):
+            if(epoch%valid_freq==0):
                 for batch,ex_shard in enumerate(valid_exshard):
                     #Loading the mini-batch into the memory
                     images,labels=load_batch_into_memory(self.dataset_path,
@@ -239,20 +252,38 @@ class FF_NeuralNetwork():
                                         - self.lr*grad
 
     #Function to calculate the loss in the current epoch
-    def calculate_loss_and_accuracy(self,batch_labels):
+    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-10):
         '''
         This function will calculate the loss in the current epoch
         give the labels and the output activation.
         '''
         #Retreiving the outptut of network from cache
-        net_output=self.actv_cache["A"+self.nlayers]
+        net_output=self.actv_cache["A"+str(self.nlayers)]
 
         #Calculating the loss
-        loss=(batch_labels*np.log(net_output))+\
-                (1-batch_labels)*np.log(1-net_output)
+        loss=(batch_labels*np.log(net_output+epsilon))+\
+                (1-batch_labels)*np.log(1-net_output+epsilon)
         loss=-1*np.mean(loss)
 
         #Calculating the accuracy of model
         accuracy=np.mean((net_output>0.5)==batch_labels)
 
         return loss,accuracy
+
+if __name__=="__main__":
+    #Testing the implementation
+    myNet=FF_NeuralNetwork(input_dim=2500,
+                            layer_config=[100,100,1],
+                            h_activation="relu",
+                            o_activation="sigmoid",
+                            loss_type="cross_entropy",
+                            param_init_type="glorot",
+                            param_dtype=np.float32,
+                            lr=0.001,
+                            epochs=5,
+                            dataset_path="dataset/train_valid/",
+                            split_ratio=0.85,
+                            batch_size=1000)
+
+    #Starting the training procedure
+    myNet.train_the_network(valid_freq=1)
