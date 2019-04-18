@@ -211,6 +211,8 @@ class FF_NeuralNetwork():
                 self.feedforward_though_net(images)
                 #Now calculating the gradient
                 self.backpropagate_through_net(labels)
+                #Testing the gradient numerically first
+                self.__gradient_check(images,labels)
                 #Now we will apply the parameter update
                 self.update_parameter()
 
@@ -252,7 +254,7 @@ class FF_NeuralNetwork():
                                         - self.lr*grad
 
     #Function to calculate the loss in the current epoch
-    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-10):
+    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-20):
         '''
         This function will calculate the loss in the current epoch
         give the labels and the output activation.
@@ -270,10 +272,135 @@ class FF_NeuralNetwork():
 
         return loss,accuracy
 
+    #Function to apply gradient checking
+    def __gradient_check(self,batch_input,batch_labels,epsilon=1e-5):
+        '''
+        This function will check the gradient calculated by the network
+        and calculating the gradient numerically by finite difference
+        method. This is only for testing purpose and will be switched
+        off during testing.
+        '''
+        print("Initiating gradient checking!!")
+        #getting the current cost to test the correct theta is maintained
+        J_actual,_=self.calculate_loss_and_accuracy(batch_labels)
+
+        #Saving a copy of current gradient
+        grad_actual,grad_cache_keys=self.__flatten_gradient_to_vec()
+        #Initializing the approximate grad list
+        grad_approx=[]
+
+        #Calculating the gradient numberically
+        for gname in grad_cache_keys:
+            pname=gname[1:]
+            print(pname)
+            #Extracting out the parameter attributes
+            param_shape=self.layer_params[pname].shape
+            param=self.layer_params[pname]
+
+            #Hacking to make the loop go through parameter b
+            if(pname[0]=="b"):
+                for i in range(param_shape[0]):
+                    #Nudgeing the parameter in right direction
+                    param[i]=param[i]+epsilon
+                    J_plus=self.__calculate_perturbed_loss(batch_input,
+                                                        batch_labels)
+
+                    #Now nudging the parameter in left direction
+                    param[i]=param[i]-2*epsilon
+                    J_minus=self.__calculate_perturbed_loss(batch_input,
+                                                        batch_labels)
+
+                    #Correcting the parameter value
+                    param[i]=param[i]+epsilon
+                    # J_now=self.__calculate_perturbed_loss(batch_input,
+                    #                                     batch_labels)
+                    #
+                    # print(J_actual,J_now,J_plus,J_minus)
+
+                    #Now calculating the gradient using the loss val
+                    grad=(J_plus-J_minus)/(2*epsilon)
+                    #Appending the gradient to big grad array
+                    grad_approx.append(grad)
+
+                #Now go to the new parameter variable
+                continue
+
+            #Nudgeing each of the parameter one by one
+            for i in range(param_shape[0]):
+                for j in range(param_shape[1]):
+                    #Nudgeing the parameter in right direction
+                    # print(param[i,j],epsilon)
+                    param[i,j]=param[i,j]+epsilon
+                    # print(param[i,j])
+                    J_plus=self.__calculate_perturbed_loss(batch_input,
+                                                        batch_labels)
+
+                    #Now nudging the parameter in left direction
+                    param[i,j]=param[i,j]-2*epsilon
+                    # print(param[i,j])
+                    J_minus=self.__calculate_perturbed_loss(batch_input,
+                                                        batch_labels)
+
+                    #Correcting the parameter value
+                    param[i,j]=param[i,j]+epsilon
+                    # print(param[i,j])
+                    # J_now=self.__calculate_perturbed_loss(batch_input,
+                    #                                     batch_labels)
+                    #
+                    # print(J_actual,J_now,J_plus,J_minus)
+
+                    #Now calculating the gradient using the loss val
+                    grad=(J_plus-J_minus)/(2*epsilon)
+                    #Appending the gradient to big grad array
+                    grad_approx.append(grad)
+
+        #Finally its time to see the relative diff of grad with actual
+        grad_approx=np.array(grad_approx)
+        #Printing out few gradients
+        print(grad_actual[-1],grad_approx[-1])
+
+        #Calculating the relative difference
+        rel_diff=np.linalg.norm(grad_actual-grad_approx)\
+            /(np.linalg.norm(grad_actual)+np.linalg.norm(grad_approx))
+
+        print("Relative difference in gradient: ",rel_diff)
+
+
+    def __flatten_gradient_to_vec(self):
+        '''
+        This function will flatten the gradient into one long vector
+        so that we could compare the difference in gradient.
+        '''
+        grad_vec=[]
+        grad_cache_keys=self.grad_cache.keys()
+        for gname in grad_cache_keys:
+            print(gname)
+            grad=self.grad_cache[gname]
+            grad_copy=np.copy(grad).reshape(-1)
+            grad_vec.append(grad_copy)
+
+        #Now concatenating all the gradient into one vector
+        grad_copy=np.concatenate(grad_vec)
+        print("Gradient Copied, shape:{} dtype:{}".format(grad_copy.shape,
+                                                        grad_copy.dtype))
+
+        return grad_copy,grad_cache_keys
+
+    def __calculate_perturbed_loss(self,batch_input,batch_labels):
+        '''
+        This function will calculate the cost give current parameter
+        by first feedforwarding through the net.
+        '''
+        #Forward propagating the layer with new parameter
+        self.feedforward_though_net(batch_input)
+        #Now calculating the new cost
+        J_pertb,_=self.calculate_loss_and_accuracy(batch_labels)
+        return J_pertb
+
 if __name__=="__main__":
     #Testing the implementation
     myNet=FF_NeuralNetwork(input_dim=2500,
-                            layer_config=[100,100,1],
+                            layer_config=[10,10,1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
@@ -283,7 +410,7 @@ if __name__=="__main__":
                             epochs=5,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=1000)
+                            batch_size=50)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=1)
