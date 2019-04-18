@@ -4,6 +4,7 @@ import scipy.misc
 import os
 import matplotlib.pyplot as plt
 import sys
+import pandas as pd
 np.random.seed(14)
 
 def get_batched_dataset(dataset_path,split_ratio,batch_size):
@@ -100,13 +101,45 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
 
     return images,labels
 
+def load_mnist_data():
+    '''
+    This function will load the mnist dataset into the memory for
+    benchmarking the model.
+    '''
+    dataset_path="dataset/digit-recognizer/train.csv"
+    df=pd.read_csv(dataset_path)
+    # print(df.head())
 
+    #Getting the labels and the dataset
+    print("Loading MNIST dataset!")
+    labels=df.loc[:,"label"].values
+    images=df.loc[:,"pixel0":].values.T
+    #Since the labels are multi-class we will convert them to binary
+    labels=(labels>=5)*1.0   #labels which are less than 5 are 0
+
+    #Splitting the dataset into 85-15 split
+    split_pos=int(0.80*images.shape[1])
+    #Making the training split
+    train_images=images[:,0:split_pos]
+    train_labels=labels[0:split_pos]
+    print("train labels shape: ",train_labels.shape)
+    print("train images shape: ",train_images.shape)
+
+    #Making the validation split
+    valid_images=images[:,split_pos:]
+    valid_labels=labels[split_pos:]
+    print("valid labels shape: ",valid_labels.shape)
+    print("valid images shape: ",valid_images.shape,"\n")
+
+    return train_images,train_labels,valid_images,valid_labels
 
 if __name__=="__main__":
     #Reading,shuffling,splitting and sharding the dataset
-    dataset_path="dataset/train_valid/"
-    train_exshard,valid_exshard=get_batched_dataset(dataset_path,\
-                                                    split_ratio=0.85,\
-                                                    batch_size=1000)
-    #Now testing the conversion
-    load_batch_into_memory(dataset_path,train_exshard[0])
+    # dataset_path="dataset/train_valid/"
+    # train_exshard,valid_exshard=get_batched_dataset(dataset_path,\
+    #                                                 split_ratio=0.85,\
+    #                                                 batch_size=1000)
+    # #Now testing the conversion
+    # load_batch_into_memory(dataset_path,train_exshard[0])
+
+    load_mnist_data()

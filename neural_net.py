@@ -1,5 +1,6 @@
 import numpy as np
-from data_handling import get_batched_dataset,load_batch_into_memory
+np.random.seed(14)
+from data_handling import *
 
 
 class FF_NeuralNetwork():
@@ -69,9 +70,8 @@ class FF_NeuralNetwork():
                             /(np.sqrt(in_dimension))\
                             .astype(self.param_dtype)
                 #We could keep the bias term as zeros
-                b=np.random.randn(self.layer_config[layer])\
-                            /(np.sqrt(in_dimension))\
-                            .astype(self.param_dtype)
+                b=np.zeros(self.layer_config[layer])\
+                                .astype(self.param_dtype)
             elif(self.param_init_type=="zeros"):
                 W=np.zeros(shape=w_shape,dtype=self.param_dtype)
                 b=np.zeros(shape=b_shape,dtype=self.param_dtype)
@@ -118,7 +118,7 @@ class FF_NeuralNetwork():
 
             #Now caching the results for later use
             actv_cache["A"+str(layer+1)]=A
-            #print("Shape of layer:{} is:{}".format(layer+1,A.shape))
+            # print("Shape of layer:{} is:{}".format(layer+1,A.shape))
 
         #Now assining the cache to the object
         self.actv_cache=actv_cache
@@ -134,7 +134,7 @@ class FF_NeuralNetwork():
             A=1/(1+np.exp(-1*Z))
             return A
         elif(activation_name=="relu"):
-            A=np.maximum(Z*0.0,Z)
+            A=np.maximum(0.0,Z)
             return A
         else:
             raise Exception("activation not defined")
@@ -157,6 +157,7 @@ class FF_NeuralNetwork():
         for layer in range(self.nlayers-1,-1,-1):
             #Stage 1: Calculating the gradient in parameter
             A_layer = self.actv_cache["A"+str(layer)]
+            # print(dA.shape,A_layer.T.shape)
             dW = np.matmul(dA,A_layer.T)
             db = np.sum(dA,axis=1)
             #Saving the gradient in the cache
@@ -190,54 +191,62 @@ class FF_NeuralNetwork():
         This function will handle the main control for the full training
         of the network over the whole dataset in the stochastic manner.
         '''
-        #Initializing the dataset
-        train_exshard,valid_exshard=get_batched_dataset(
-                                                    self.dataset_path,\
-                                                    self.split_ratio,\
-                                                    self.batch_size)
-        print("# Training Set minbatch:",len(train_exshard))
-        print("# Validation Set minibatch:",len(valid_exshard))
+        #Initializing the MNIST images
+        train_images,train_labels,valid_images,valid_labels\
+                                =load_mnist_data()
+
+        # #Initializing the dataset
+        # train_exshard,valid_exshard=get_batched_dataset(
+        #                                             self.dataset_path,\
+        #                                             self.split_ratio,\
+        #                                             self.batch_size)
+        # print("# Training Set minbatch:",len(train_exshard))
+        # print("# Validation Set minibatch:",len(valid_exshard))
+
         #Initializing the parameter
         self.initialize_parameters()
 
         #Starting the training loop
         for epoch in range(self.epochs):
+            batch=1
             #Now iterating over all the batches of example
-            for batch,ex_shard in enumerate(train_exshard):
-                #Loading the mini-batch into the memory
-                images,labels=load_batch_into_memory(self.dataset_path,
-                                                    ex_shard)
-                #Now forward propagating through the network
-                self.feedforward_though_net(images)
-                #Now calculating the gradient
-                self.backpropagate_through_net(labels)
-                #Testing the gradient numerically first
-                self.__gradient_check(images,labels)
-                #Now we will apply the parameter update
-                self.update_parameter()
+            # for batch,ex_shard in enumerate(train_exshard):
+            #Loading the mini-batch into the memory
+            # train_images,train_labels=load_batch_into_memory(\
+            #                                       self.dataset_path,
+            #                                       ex_shard)
+            #Now forward propagating through the network
+            self.feedforward_though_net(train_images)
+            #Now calculating the gradient
+            self.backpropagate_through_net(train_labels)
+            #Testing the gradient numerically first
+            # self.__gradient_check(images,labels)
+            #Now we will apply the parameter update
+            self.update_parameter()
 
-                #Calculating the loss in current epoch
-                loss,accuracy=self.calculate_loss_and_accuracy(labels)
-                print("Epoch:{} mini-batch:{} loss:{}\t accuracy:{}".format(
-                                    epoch,batch,loss,accuracy))
+            #Calculating the loss in current epoch
+            loss,accuracy=self.calculate_loss_and_accuracy(train_labels)
+            print("Epoch:{}\t mini-batch:{}\t loss:{}\t accuracy:{}".format(
+                                epoch,batch,loss,accuracy))
 
             #Finally one epoch is completed
-            print("Training Epoch-{} completed".format(epoch))
+            # print("Training Epoch-{} completed".format(epoch))
 
             #Starting the validation run
             if(epoch%valid_freq==0):
-                for batch,ex_shard in enumerate(valid_exshard):
-                    #Loading the mini-batch into the memory
-                    images,labels=load_batch_into_memory(self.dataset_path,
-                                                        ex_shard)
-                    #Now forward propagating through the network
-                    self.feedforward_though_net(images)
+                # for batch,ex_shard in enumerate(valid_exshard):
+                #Loading the mini-batch into the memory
+                # valid_images,valid_labels=load_batch_into_memory(\
+                #                                     self.dataset_path,
+                #                                     ex_shard)
+                #Now forward propagating through the network
+                self.feedforward_though_net(valid_images)
 
-                    #Calculating the loss in current epoch
-                    loss,accuracy=self.calculate_loss_and_accuracy(labels)
-                    print("Epoch:{} mini-batch:{} loss:{}\t accuracy:{}".format(
-                                        epoch,batch,loss,accuracy))
-            print("Validation Completed")
+                #Calculating the loss in current epoch
+                loss,accuracy=self.calculate_loss_and_accuracy(valid_labels)
+                print("Epoch:{}\t mini-batch:{}\t loss:{}\t accuracy:{}".format(
+                                    epoch,batch,loss,accuracy))
+                print("Validation Completed\n")
 
     #Function to update the parameters finally once the grad is found
     def update_parameter(self):
@@ -292,7 +301,7 @@ class FF_NeuralNetwork():
         #Calculating the gradient numberically
         for gname in grad_cache_keys:
             pname=gname[1:]
-            print(pname)
+            # print(pname)
             #Extracting out the parameter attributes
             param_shape=self.layer_params[pname].shape
             param=self.layer_params[pname]
@@ -357,14 +366,13 @@ class FF_NeuralNetwork():
         #Finally its time to see the relative diff of grad with actual
         grad_approx=np.array(grad_approx)
         #Printing out few gradients
-        print(grad_actual[-1],grad_approx[-1])
+        # print(grad_actual[-1],grad_approx[-1])
 
         #Calculating the relative difference
         rel_diff=np.linalg.norm(grad_actual-grad_approx)\
             /(np.linalg.norm(grad_actual)+np.linalg.norm(grad_approx))
 
         print("Relative difference in gradient: ",rel_diff)
-
 
     def __flatten_gradient_to_vec(self):
         '''
@@ -374,15 +382,15 @@ class FF_NeuralNetwork():
         grad_vec=[]
         grad_cache_keys=self.grad_cache.keys()
         for gname in grad_cache_keys:
-            print(gname)
+            # print(gname)
             grad=self.grad_cache[gname]
             grad_copy=np.copy(grad).reshape(-1)
             grad_vec.append(grad_copy)
 
         #Now concatenating all the gradient into one vector
         grad_copy=np.concatenate(grad_vec)
-        print("Gradient Copied, shape:{} dtype:{}".format(grad_copy.shape,
-                                                        grad_copy.dtype))
+        # print("Gradient Copied, shape:{} dtype:{}".format(grad_copy.shape,
+        #                                                 grad_copy.dtype))
 
         return grad_copy,grad_cache_keys
 
@@ -399,18 +407,18 @@ class FF_NeuralNetwork():
 
 if __name__=="__main__":
     #Testing the implementation
-    myNet=FF_NeuralNetwork(input_dim=2500,
+    myNet=FF_NeuralNetwork(input_dim=784,
                             layer_config=[10,10,1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
-                            lr=0.001,
-                            epochs=5,
+                            lr=0.00005,
+                            epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=50)
+                            batch_size=1000)
 
     #Starting the training procedure
-    myNet.train_the_network(valid_freq=1)
+    myNet.train_the_network(valid_freq=20)
