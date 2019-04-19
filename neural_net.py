@@ -150,8 +150,9 @@ class FF_NeuralNetwork():
         grad_cache={}
 
         #Initializing the stage 2 gradient for the output layer
+        # print(batch_labels.shape,self.actv_cache["A"+str(self.nlayers)].shape)
         dA=(batch_labels-self.actv_cache["A"+str(self.nlayers)])\
-                    / (-1*self.batch_size)
+                / (-1*self.actv_cache["A"+str(self.nlayers)].shape[1])
 
         #Now iterating over the subsequent layer to get gradient
         for layer in range(self.nlayers-1,-1,-1):
@@ -160,6 +161,7 @@ class FF_NeuralNetwork():
             # print(dA.shape,A_layer.T.shape)
             dW = np.matmul(dA,A_layer.T)
             db = np.sum(dA,axis=1)
+            # print(dW.shape,db.shape)
             #Saving the gradient in the cache
             grad_cache["dW"+str(layer)]=dW
             grad_cache["db"+str(layer)]=db
@@ -181,7 +183,7 @@ class FF_NeuralNetwork():
         if(activation_name=="sigmoid"):
             return A*(1-A)
         elif(activation_name=="relu"):
-            return (A>0)*1.0
+            return (A>0).astype(np.float32)
         else:
             raise AssertionError("unsupported activation type!!")
 
@@ -263,18 +265,19 @@ class FF_NeuralNetwork():
                                         - self.lr*grad
 
     #Function to calculate the loss in the current epoch
-    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-20):
+    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-30):
         '''
         This function will calculate the loss in the current epoch
         give the labels and the output activation.
         '''
         #Retreiving the outptut of network from cache
         net_output=self.actv_cache["A"+str(self.nlayers)]
+        # print(net_output.shape)
 
         #Calculating the loss
         loss=(batch_labels*np.log(net_output+epsilon))+\
                 (1-batch_labels)*np.log(1-net_output+epsilon)
-        loss=-1*np.mean(loss)
+        loss=-1*np.mean(np.sum(loss,axis=0))
 
         #Calculating the accuracy of model
         accuracy=np.mean((net_output>0.5)==batch_labels)
@@ -299,9 +302,10 @@ class FF_NeuralNetwork():
         grad_approx=[]
 
         #Calculating the gradient numberically
+        temp_i=0
         for gname in grad_cache_keys:
             pname=gname[1:]
-            # print(pname)
+            print(pname)
             #Extracting out the parameter attributes
             param_shape=self.layer_params[pname].shape
             param=self.layer_params[pname]
@@ -330,6 +334,10 @@ class FF_NeuralNetwork():
                     grad=(J_plus-J_minus)/(2*epsilon)
                     #Appending the gradient to big grad array
                     grad_approx.append(grad)
+
+                    #Printing the gradient
+                    print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
+                    temp_i+=1
 
                 #Now go to the new parameter variable
                 continue
@@ -362,6 +370,10 @@ class FF_NeuralNetwork():
                     grad=(J_plus-J_minus)/(2*epsilon)
                     #Appending the gradient to big grad array
                     grad_approx.append(grad)
+
+                    #Printing the gradient
+                    print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
+                    temp_i+=1
 
         #Finally its time to see the relative diff of grad with actual
         grad_approx=np.array(grad_approx)
@@ -418,7 +430,7 @@ if __name__=="__main__":
                             epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=1000)
+                            batch_size=2100)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=20)
