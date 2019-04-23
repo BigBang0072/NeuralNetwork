@@ -1,6 +1,7 @@
 import numpy as np
 np.random.seed(14)
 from data_handling import *
+import sys
 
 
 class FF_NeuralNetwork():
@@ -105,9 +106,14 @@ class FF_NeuralNetwork():
             #Extracting out the corresponding parameters
             W = self.layer_params["W"+str(layer)]
             b = self.layer_params["b"+str(layer)]
+            # print("Printing the parameters of layers:")
+            # print("W{}:\n".format(layer),W)
+            # print("b{}:\n".format(layer),b)
 
             #Now calculating the activation
             Z=(np.matmul(W,A).T+b).T
+            # print("Printing the activation:Z")
+            # print(Z.shape,"\n",Z)
             #Passing the activation through the rectifier
             if(layer == self.nlayers-1):
                 assert Z.shape[0]==1,"Binary Classification Bro!!"
@@ -118,11 +124,13 @@ class FF_NeuralNetwork():
 
             #Now caching the results for later use
             actv_cache["A"+str(layer+1)]=A
-            # print("Shape of layer:{} is:{}".format(layer+1,A.shape))
+            # print("Printing the activation A:")
+            # print(A.shape,"\n",A,"\n\n")
 
         #Now assining the cache to the object
         self.actv_cache=actv_cache
-        #print("Feed-Forward Completed\n")
+        # print(self.actv_cache)
+        # print("Feed-Forward Completed\n")
 
     #Function to apply the activation to the input tensor
     def apply_activation(self,Z,activation_name):
@@ -150,18 +158,27 @@ class FF_NeuralNetwork():
         grad_cache={}
 
         #Initializing the stage 2 gradient for the output layer
-        # print(batch_labels.shape,self.actv_cache["A"+str(self.nlayers)].shape)
+        # print("shape of batch_labels:",batch_labels)
+        # print("Output Activation")
+        # print(self.actv_cache["A"+str(self.nlayers)])
+        # print(self.actv_cache["A"+str(self.nlayers)].shape)
         dA=(batch_labels-self.actv_cache["A"+str(self.nlayers)])\
                 / (-1*self.actv_cache["A"+str(self.nlayers)].shape[1])
+        # print("\n\n\nNow we will be backpropagating:")
+        # print(dA)
 
         #Now iterating over the subsequent layer to get gradient
         for layer in range(self.nlayers-1,-1,-1):
             #Stage 1: Calculating the gradient in parameter
             A_layer = self.actv_cache["A"+str(layer)]
-            # print(dA.shape,A_layer.T.shape)
+            # print("Prinitng the dA:")
+            # print(dA)
+            # print("Printing the A_layer:")
+            # print(A_layer.T)
             dW = np.matmul(dA,A_layer.T)
             db = np.sum(dA,axis=1)
-            # print(dW.shape,db.shape)
+            # print("Printing dW:\n",dW)
+            # print("Printing db:\n",db,"\n\n")
             #Saving the gradient in the cache
             grad_cache["dW"+str(layer)]=dW
             grad_cache["db"+str(layer)]=db
@@ -194,8 +211,11 @@ class FF_NeuralNetwork():
         of the network over the whole dataset in the stochastic manner.
         '''
         #Initializing the MNIST images
+        # train_images,train_labels,valid_images,valid_labels\
+        #                         =load_mnist_data()
+        #Initializing the custom dataset
         train_images,train_labels,valid_images,valid_labels\
-                                =load_mnist_data()
+                                =generate_custom_dataset()
 
         # #Initializing the dataset
         # train_exshard,valid_exshard=get_batched_dataset(
@@ -223,6 +243,7 @@ class FF_NeuralNetwork():
             self.backpropagate_through_net(train_labels)
             #Testing the gradient numerically first
             self.__gradient_check(train_images,train_labels)
+            sys.exit(0)
             #Now we will apply the parameter update
             self.update_parameter()
 
@@ -265,14 +286,17 @@ class FF_NeuralNetwork():
                                         - self.lr*grad
 
     #Function to calculate the loss in the current epoch
-    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-30):
+    def calculate_loss_and_accuracy(self,batch_labels,epsilon=1e-20):
         '''
         This function will calculate the loss in the current epoch
         give the labels and the output activation.
         '''
         #Retreiving the outptut of network from cache
         net_output=self.actv_cache["A"+str(self.nlayers)]
-        # print(net_output.shape)
+        # print("Output of network:")
+        # print(net_output)
+        # print("Batch Labels:")
+        # print(batch_labels)
 
         #Calculating the loss
         loss=(batch_labels*np.log(net_output+epsilon))+\
@@ -295,6 +319,7 @@ class FF_NeuralNetwork():
         print("Initiating gradient checking!!")
         #getting the current cost to test the correct theta is maintained
         J_actual,_=self.calculate_loss_and_accuracy(batch_labels)
+        print("Initial Cost:",J_actual)
 
         #Saving a copy of current gradient
         grad_actual,grad_cache_keys=self.__flatten_gradient_to_vec()
@@ -313,18 +338,24 @@ class FF_NeuralNetwork():
             #Hacking to make the loop go through parameter b
             if(pname[0]=="b"):
                 for i in range(param_shape[0]):
+                    # print("b-params:")
+                    # print(param)
+                    #Temporarily holding the old parameter
+                    old_param_val=param[i]
+
                     #Nudgeing the parameter in right direction
-                    param[i]=param[i]+epsilon
+                    param[i]=old_param_val+epsilon
                     J_plus=self.__calculate_perturbed_loss(batch_input,
                                                         batch_labels)
 
                     #Now nudging the parameter in left direction
-                    param[i]=param[i]-2*epsilon
+                    param[i]=old_param_val-epsilon
                     J_minus=self.__calculate_perturbed_loss(batch_input,
                                                         batch_labels)
 
                     #Correcting the parameter value
-                    param[i]=param[i]+epsilon
+                    # param[i]=param[i]+epsilon
+                    param[i]=old_param_val
                     # J_now=self.__calculate_perturbed_loss(batch_input,
                     #                                     batch_labels)
                     #
@@ -345,21 +376,25 @@ class FF_NeuralNetwork():
             #Nudgeing each of the parameter one by one
             for i in range(param_shape[0]):
                 for j in range(param_shape[1]):
+                    #Holding the current param value for safekeeping
+                    old_param_val=param[i,j]
+
                     #Nudgeing the parameter in right direction
                     # print(param[i,j],epsilon)
-                    param[i,j]=param[i,j]+epsilon
+                    param[i,j]=old_param_val+epsilon
                     # print(param[i,j])
                     J_plus=self.__calculate_perturbed_loss(batch_input,
                                                         batch_labels)
 
                     #Now nudging the parameter in left direction
-                    param[i,j]=param[i,j]-2*epsilon
+                    param[i,j]=old_param_val-epsilon
                     # print(param[i,j])
                     J_minus=self.__calculate_perturbed_loss(batch_input,
                                                         batch_labels)
 
                     #Correcting the parameter value
-                    param[i,j]=param[i,j]+epsilon
+                    # param[i,j]=param[i,j]+epsilon
+                    param[i,j]=old_param_val
                     # print(param[i,j])
                     # J_now=self.__calculate_perturbed_loss(batch_input,
                     #                                     batch_labels)
@@ -419,18 +454,18 @@ class FF_NeuralNetwork():
 
 if __name__=="__main__":
     #Testing the implementation
-    myNet=FF_NeuralNetwork(input_dim=784,
-                            layer_config=[10,10,1],
+    myNet=FF_NeuralNetwork(input_dim=100,
+                            layer_config=[2,2,1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
                             lr=0.00005,
-                            epochs=10000,
+                            epochs=10,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=2100)
+                            batch_size=4)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=20)

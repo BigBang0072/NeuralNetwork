@@ -133,6 +133,36 @@ def load_mnist_data():
 
     return train_images,train_labels,valid_images,valid_labels
 
+def generate_custom_dataset():
+    '''
+    This function will generate a custom small scale dataset to test
+    all the modules of the dataset.
+    '''
+    feature_dim=100
+    train_ex=4
+    valid_ex=4
+
+    #Generating the training set
+    x_train=np.random.randn(feature_dim,train_ex)
+    y_train=np.random.randint(2,size=train_ex)
+
+    #Generating the validation set
+    x_test=np.random.randn(feature_dim,valid_ex)
+    y_test=np.random.randint(2,size=valid_ex)
+
+    #Printing the info about the datset
+    print("train_size: ",x_train.shape,y_train.shape)
+    print("valid_size: ",x_test.shape,y_test.shape)
+    print("\nPrinting the training dataset:")
+    print(x_train)
+    print(y_train)
+
+    print("\nPrinting the validation dataset:")
+    print(x_test)
+    print(y_test)
+
+    return x_train,y_train,x_test,y_test
+
 if __name__=="__main__":
     #Reading,shuffling,splitting and sharding the dataset
     # dataset_path="dataset/train_valid/"
@@ -142,4 +172,5 @@ if __name__=="__main__":
     # #Now testing the conversion
     # load_batch_into_memory(dataset_path,train_exshard[0])
 
-    load_mnist_data()
+    # load_mnist_data()
+    generate_custom_dataset()
