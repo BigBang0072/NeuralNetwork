@@ -69,7 +69,7 @@ class FF_NeuralNetwork():
             if(self.param_init_type=="glorot"):
                 W=np.random.randn(self.layer_config[layer],in_dimension)\
                             /(np.sqrt(in_dimension))\
-                            .astype(self.param_dtype)+1
+                            .astype(self.param_dtype)
                 #We could keep the bias term as zeros
                 b=np.zeros(self.layer_config[layer])\
                                 .astype(self.param_dtype)
@@ -216,11 +216,11 @@ class FF_NeuralNetwork():
         of the network over the whole dataset in the stochastic manner.
         '''
         #Initializing the MNIST images
-        # train_images,train_labels,valid_images,valid_labels\
-        #                         =load_mnist_data()
-        #Initializing the custom dataset
         train_images,train_labels,valid_images,valid_labels\
-                                =generate_custom_dataset()
+                                =load_mnist_data()
+        #Initializing the custom dataset
+        # train_images,train_labels,valid_images,valid_labels\
+        #                         =generate_custom_dataset()
 
         # #Initializing the dataset
         # train_exshard,valid_exshard=get_batched_dataset(
@@ -233,6 +233,9 @@ class FF_NeuralNetwork():
         #Initializing the parameter
         self.initialize_parameters()
 
+        #Initialtialzing the consecutive loss value for rel diff
+        loss_t1=0.0
+        loss_t2=0.0
         #Starting the training loop
         for epoch in range(self.epochs):
             batch=1
@@ -247,15 +250,23 @@ class FF_NeuralNetwork():
             #Now calculating the gradient
             self.backpropagate_through_net(train_labels)
             #Testing the gradient numerically first
-            self.__gradient_check(train_images,train_labels)
-            sys.exit(0)
+            # self.__gradient_check(train_images,train_labels)
+            # sys.exit(0)
             #Now we will apply the parameter update
             self.update_parameter()
 
             #Calculating the loss in current epoch
             loss,accuracy=self.calculate_loss_and_accuracy(train_labels)
-            print("Epoch:{}\t mini-batch:{}\t loss:{}\t accuracy:{}".format(
+            print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
                                 epoch,batch,loss,accuracy))
+            #Updating the loss for relative difference
+            if((loss_t1-loss_t2)<1e-5):
+                #Reducing the learning rate for fine grained searching
+                print("Triggering the decay: lr:",self.lr)
+                self.lr=self.lr/1.0001
+            loss_t1=loss_t2
+            loss_t2=loss
+            # print(loss_t2,loss_t2,loss_t2-loss_t1)
 
             #Finally one epoch is completed
             # print("Training Epoch-{} completed".format(epoch))
@@ -272,7 +283,7 @@ class FF_NeuralNetwork():
 
                 #Calculating the loss in current epoch
                 loss,accuracy=self.calculate_loss_and_accuracy(valid_labels)
-                print("Epoch:{}\t mini-batch:{}\t loss:{}\t accuracy:{}".format(
+                print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
                                     epoch,batch,loss,accuracy))
                 print("Validation Completed\n")
 
@@ -334,7 +345,7 @@ class FF_NeuralNetwork():
         print("Initiating gradient checking!!")
         #getting the current cost to test the correct theta is maintained
         J_actual,_=self.calculate_loss_and_accuracy(batch_labels)
-        print("Initial Cost:",J_actual)
+        # print("Initial Cost:",J_actual)
 
         #Saving a copy of current gradient
         grad_actual,grad_cache_keys=self.__flatten_gradient_to_vec()
@@ -382,8 +393,8 @@ class FF_NeuralNetwork():
                     grad_approx.append(grad)
 
                     #Printing the gradient
-                    print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
-                    temp_i+=1
+                    # print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
+                    # temp_i+=1
 
                 #Now go to the new parameter variable
                 continue
@@ -422,8 +433,8 @@ class FF_NeuralNetwork():
                     grad_approx.append(grad)
 
                     #Printing the gradient
-                    print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
-                    temp_i+=1
+                    # print(grad,grad_actual[temp_i],grad-grad_actual[temp_i])
+                    # temp_i+=1
 
         #Finally its time to see the relative diff of grad with actual
         grad_approx=np.array(grad_approx)
@@ -469,18 +480,18 @@ class FF_NeuralNetwork():
 
 if __name__=="__main__":
     #Testing the implementation
-    myNet=FF_NeuralNetwork(input_dim=3,
-                            layer_config=[2,3,3,2,1],
+    myNet=FF_NeuralNetwork(input_dim=784,
+                            layer_config=[2,2,1],
                             h_activation="relu",
-                            o_activation="identity",
-                            loss_type="mse",
+                            o_activation="sigmoid",
+                            loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
-                            lr=0.00005,
-                            epochs=10,
+                            lr=0.001,
+                            epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=4)
+                            batch_size=10000)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=20)
