@@ -237,22 +237,30 @@ class FF_NeuralNetwork():
         #Initialtialzing the consecutive loss value for rel diff
         loss_t1=0.0
         loss_t2=0.0
+        #Saving the images and labels after they are read for next iter
+        train_batches=[]
+        valid_batches=[]
         #Starting the training loop
         for epoch in range(self.epochs):
-            batch=1
             #Now iterating over all the batches of example
             for batch,ex_shard in enumerate(train_exshard):
                 #Loading the mini-batch into the memory
-                train_images,train_labels=load_batch_into_memory(\
+                try:
+                    train_images,train_labels=train_batches[batch]
+                except:
+                    train_images,train_labels=load_batch_into_memory(\
                                                       self.dataset_path,
                                                       ex_shard)
+                    #Saving the dataset into the cache
+                    train_batches.append((train_images,train_labels))
+
                 #Now forward propagating through the network
                 self.feedforward_though_net(train_images)
                 #Now calculating the gradient
                 self.backpropagate_through_net(train_labels)
                 #Testing the gradient numerically first
-                self.__gradient_check(train_images,train_labels)
-                sys.exit(0)
+                # self.__gradient_check(train_images,train_labels)
+                # sys.exit(0)
                 #Now we will apply the parameter update
                 self.update_parameter()
 
@@ -261,31 +269,37 @@ class FF_NeuralNetwork():
                 print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
                                     epoch,batch,loss,accuracy))
                 #Updating the loss for relative difference
-                if((loss_t1-loss_t2)<1e-5):
-                    #Reducing the learning rate for fine grained searching
-                    print("Triggering the decay: lr:",self.lr)
-                    self.lr=self.lr/1.0001
-                loss_t1=loss_t2
-                loss_t2=loss
+                # if((loss_t1-loss_t2)<1e-5):
+                #     #Reducing the learning rate for fine grained searching
+                #     print("Triggering the decay: lr:",self.lr)
+                #     self.lr=self.lr/1.001
+                # loss_t1=loss_t2
+                # loss_t2=loss
                 # print(loss_t2,loss_t2,loss_t2-loss_t1)
 
             #Finally one epoch is completed
-            print("Training Epoch-{} completed".format(epoch))
+            # print("Training Epoch-{} completed".format(epoch))
 
             #Starting the validation run
             if(epoch%valid_freq==0):
-                # for batch,ex_shard in enumerate(valid_exshard):
-                #Loading the mini-batch into the memory
-                # valid_images,valid_labels=load_batch_into_memory(\
-                #                                     self.dataset_path,
-                #                                     ex_shard)
-                #Now forward propagating through the network
-                self.feedforward_though_net(valid_images)
+                for batch,ex_shard in enumerate(valid_exshard):
+                    #Retreiving the images from cache
+                    try:
+                        valid_images,valid_labels=valid_batches[batch]
+                    except:
+                        # Loading the mini-batch into the memory
+                        valid_images,valid_labels=load_batch_into_memory(\
+                                                        self.dataset_path,
+                                                        ex_shard)
+                        #Saving the images into the cache
+                        valid_batches.append((valid_images,valid_labels))
+                    #Now forward propagating through the network
+                    self.feedforward_though_net(valid_images)
 
-                #Calculating the loss in current epoch
-                loss,accuracy=self.calculate_loss_and_accuracy(valid_labels)
-                print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
-                                    epoch,batch,loss,accuracy))
+                    #Calculating the loss in current epoch
+                    loss,accuracy=self.calculate_loss_and_accuracy(valid_labels)
+                    print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
+                                        epoch,batch,loss,accuracy))
                 print("Validation Completed\n")
 
     #Function to update the parameters finally once the grad is found
@@ -482,17 +496,17 @@ class FF_NeuralNetwork():
 if __name__=="__main__":
     #Testing the implementation
     myNet=FF_NeuralNetwork(input_dim=2500,
-                            layer_config=[1,10,1],
+                            layer_config=[100,10,1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
-                            lr=0.00005,
+                            lr=0.009,
                             epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=1000)
+                            batch_size=22000)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=20)

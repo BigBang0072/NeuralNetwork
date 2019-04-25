@@ -92,6 +92,10 @@ def load_batch_into_memory(dataset_path,batch_exnames,imsize=(50,50)):
     #Now converting the dataset into numpy array
     labels=(np.array(labels,dtype=np.uint8).T).reshape(1,-1)
     images=np.array(images).T
+
+    #Normalizing the dataset for small value
+    images=images/255
+    
     # print("Batch Created:\nimg_shape:{} img_dtype:{}".format(\
     #                                                     images.shape,\
     #                                                     images.dtype))
