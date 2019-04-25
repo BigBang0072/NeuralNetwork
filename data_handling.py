@@ -138,13 +138,13 @@ def generate_custom_dataset():
     This function will generate a custom small scale dataset to test
     all the modules of the dataset.
     '''
-    feature_dim=100
+    feature_dim=3
     train_ex=4
     valid_ex=4
 
     #Generating the training set
     x_train=np.random.randn(feature_dim,train_ex)
-    y_train=np.random.randint(2,size=train_ex)
+    y_train=np.random.randint(10,size=train_ex)
 
     #Generating the validation set
     x_test=np.random.randn(feature_dim,valid_ex)

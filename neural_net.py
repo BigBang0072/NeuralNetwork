@@ -69,7 +69,7 @@ class FF_NeuralNetwork():
             if(self.param_init_type=="glorot"):
                 W=np.random.randn(self.layer_config[layer],in_dimension)\
                             /(np.sqrt(in_dimension))\
-                            .astype(self.param_dtype)
+                            .astype(self.param_dtype)+1
                 #We could keep the bias term as zeros
                 b=np.zeros(self.layer_config[layer])\
                                 .astype(self.param_dtype)
@@ -144,6 +144,8 @@ class FF_NeuralNetwork():
         elif(activation_name=="relu"):
             A=np.maximum(0.0,Z)
             return A
+        elif(activation_name=="identity"):
+            return Z
         else:
             raise Exception("activation not defined")
 
@@ -162,6 +164,7 @@ class FF_NeuralNetwork():
         # print("Output Activation")
         # print(self.actv_cache["A"+str(self.nlayers)])
         # print(self.actv_cache["A"+str(self.nlayers)].shape)
+        #Bootstraping the first error delta
         dA=(batch_labels-self.actv_cache["A"+str(self.nlayers)])\
                 / (-1*self.actv_cache["A"+str(self.nlayers)].shape[1])
         # print("\n\n\nNow we will be backpropagating:")
@@ -201,6 +204,8 @@ class FF_NeuralNetwork():
             return A*(1-A)
         elif(activation_name=="relu"):
             return (A>0).astype(np.float32)
+        elif(activation_name=="identity"):
+            return np.ones(A.shape)
         else:
             raise AssertionError("unsupported activation type!!")
 
@@ -299,9 +304,19 @@ class FF_NeuralNetwork():
         # print(batch_labels)
 
         #Calculating the loss
-        loss=(batch_labels*np.log(net_output+epsilon))+\
-                (1-batch_labels)*np.log(1-net_output+epsilon)
-        loss=-1*np.mean(np.sum(loss,axis=0))
+        loss=None
+        if(self.loss_type=="cross_entropy"):
+            #If the loss is cross entropy loss
+            loss=(batch_labels*np.log(net_output+epsilon))+\
+                    (1-batch_labels)*np.log(1-net_output+epsilon)
+            loss=-1*np.mean(np.sum(loss,axis=0))
+        elif(self.loss_type=="mse"):
+            #Calculating the squared loss for each output node
+            loss=np.sum(((net_output-batch_labels)**2)/2,axis=0)
+            #Calculating the mean of all the squared error
+            loss=np.mean(loss)
+        else:
+            raise AssertionError("Unsupported Loss")
 
         #Calculating the accuracy of model
         accuracy=np.mean((net_output>0.5)==batch_labels)
@@ -454,11 +469,11 @@ class FF_NeuralNetwork():
 
 if __name__=="__main__":
     #Testing the implementation
-    myNet=FF_NeuralNetwork(input_dim=100,
-                            layer_config=[2,2,1],
+    myNet=FF_NeuralNetwork(input_dim=3,
+                            layer_config=[2,3,3,2,1],
                             h_activation="relu",
-                            o_activation="sigmoid",
-                            loss_type="cross_entropy",
+                            o_activation="identity",
+                            loss_type="mse",
                             param_init_type="glorot",
                             param_dtype=np.float32,
                             lr=0.00005,
