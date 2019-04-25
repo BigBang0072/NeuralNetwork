@@ -203,7 +203,7 @@ class FF_NeuralNetwork():
         if(activation_name=="sigmoid"):
             return A*(1-A)
         elif(activation_name=="relu"):
-            return (A>0).astype(np.float32)
+            return (A>0)
         elif(activation_name=="identity"):
             return np.ones(A.shape)
         else:
@@ -481,17 +481,17 @@ class FF_NeuralNetwork():
 if __name__=="__main__":
     #Testing the implementation
     myNet=FF_NeuralNetwork(input_dim=784,
-                            layer_config=[2,2,1],
+                            layer_config=[100,100,1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
-                            lr=0.001,
+                            lr=0.00005,
                             epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
-                            batch_size=10000)
+                            batch_size=1000)
 
     #Starting the training procedure
     myNet.train_the_network(valid_freq=20)

@@ -118,7 +118,7 @@ def load_mnist_data():
     labels=(labels>=5)*1.0   #labels which are less than 5 are 0
 
     #Splitting the dataset into 85-15 split
-    split_pos=int(0.70*images.shape[1])
+    split_pos=int(0.80*images.shape[1])
     #Making the training split
     train_images=images[:,0:split_pos]
     train_labels=labels[0:split_pos]
