@@ -279,6 +279,7 @@ class FF_NeuralNetwork():
 
             #Finally one epoch is completed
             # print("Training Epoch-{} completed".format(epoch))
+            self.print_confusion_mat()
 
             #Starting the validation run
             if(epoch%valid_freq==0):
@@ -301,6 +302,7 @@ class FF_NeuralNetwork():
                     print("Epoch:{0}\t mini-batch:{1}\t loss:{2:.6f}\t accuracy:{3:.6f}".format(
                                         epoch,batch,loss,accuracy))
                 print("Validation Completed\n")
+                self.print_confusion_mat()
 
     #Function to update the parameters finally once the grad is found
     def update_parameter(self):
@@ -347,7 +349,29 @@ class FF_NeuralNetwork():
         #Calculating the accuracy of model
         accuracy=np.mean((net_output>0.5)==batch_labels)
 
+        #Calculating the confusion matrix
+        #Getting the first row
+        self.true_pos=np.sum((net_output<0.5)*(batch_labels==0))
+        self.false_neg=np.sum((net_output>=0.5)*(batch_labels==0))
+        #Getting the second row
+        self.true_neg=np.sum((net_output>=0.5)*(batch_labels==1))
+        self.false_pos=np.sum((net_output<0.5)*(batch_labels==1))
+
+        # print((net_output>=0.5).astype(np.int32),batch_labels)
+
         return loss,accuracy
+
+    #Fucntion to print the confusion matrix
+    def print_confusion_mat(self):
+        '''
+        This fucntion will print the confusion matrix saved as the
+        class attributes.
+        '''
+        print("Printing the confusion matrix:")
+        print("\tpred:0\tpred:1")
+        print("label:0\t{}\t{}".format(self.true_pos,self.false_neg))
+        print("label:1\t{}\t{}".format(self.false_pos,self.true_neg))
+
 
     #Function to apply gradient checking
     def __gradient_check(self,batch_input,batch_labels,epsilon=1e-5):
@@ -496,13 +520,13 @@ class FF_NeuralNetwork():
 if __name__=="__main__":
     #Testing the implementation
     myNet=FF_NeuralNetwork(input_dim=2500,
-                            layer_config=[100,10,1],
+                            layer_config=[1],
                             h_activation="relu",
                             o_activation="sigmoid",
                             loss_type="cross_entropy",
                             param_init_type="glorot",
                             param_dtype=np.float32,
-                            lr=0.009,
+                            lr=0.025,
                             epochs=10000,
                             dataset_path="dataset/train_valid/",
                             split_ratio=0.85,
